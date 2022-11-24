@@ -44,7 +44,7 @@ python3 main.py
 ```
 
 Help Menu:
-
+|                               |               |
 |-------------------------------|---------------|
 | For this help menu            | /h or help    |
 | To start a streak             | /s or start   |
