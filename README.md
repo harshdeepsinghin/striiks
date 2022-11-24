@@ -44,21 +44,15 @@ python3 main.py
 ```
 
 Help Menu:
-|||
-|---|---|
-│ For this help menu            │ /h or help    │
-
-│ To start a streak             │ /s or start   │
-
-│ To add an existing streak     │ /a or add     │
-
-│ To simple view the streaks    │ /si or simple │
-
-│ To list the streaks or broken │ /l or list    │
-
-│ To break or delete a streak   │ /b or break   │
-
-│ To quit this app              │ /q or quit    │
+|                               |               |
+|-------------------------------|---------------|
+| For this help menu            | /h or help    |
+| To start a streak             | /s or start   |
+| To add an existing streak     | /a or add     |
+| To simple view the streaks    | /v or view    |
+| To list the streaks or broken | /l or list    |
+| To break or delete a streak   | /b or break   |
+| To quit this app              | /q or quit    |
 
 ## Support
 
