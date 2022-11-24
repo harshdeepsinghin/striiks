@@ -1,0 +1,2 @@
+tabulate
+mysql-connector-python
