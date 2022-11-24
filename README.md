@@ -1,8 +1,14 @@
-## Table of Contents
 
+
+
+## Table of Contents
+- [Introduction](#introduction)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Support](#support)
+
+## Introduction
+**Striiks** is a simple streak days-counter program made in python to make or break habits.
 
 ## Installation
 
