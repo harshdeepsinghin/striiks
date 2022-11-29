@@ -145,6 +145,7 @@ def main():
                 break
 
             else:
+                print('\n' + 'Wrong argument passed!' + '\n')
                 continue
 
         except: # to except errors
@@ -163,8 +164,8 @@ main() # to run the whole program
 CREDITS:
 
 HARSHDEEP SINGH - CODER
-KESHAV SINGH - ADVISOR
-PRIYANSHU SHARMA - ADVISOR
+KESHAV SINGH - CODER
+PRIYANSHU SHARMA - CODER
 ROHAN BATRA - HELPER
 
 
