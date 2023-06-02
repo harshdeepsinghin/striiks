@@ -12,7 +12,7 @@
 
 ## Installation
 
-Prerequisites:<br />
+**Prerequisites:**<br />
 Your system must have installed any DBMS (such as MySQL, MongoDB or any other)
 
 Clone the repo:
