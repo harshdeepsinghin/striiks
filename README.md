@@ -12,6 +12,9 @@
 
 ## Installation
 
+Prerequisites:
+Your system must have installed any DBMS (such as MySQL, MongoDB or any other)
+
 Clone the repo:
 ```
 git clone 'https://github.com/harshluckyme/striiks.git'
