@@ -3,8 +3,8 @@
 
 ## Table of Contents
 - [Introduction](#introduction)
+- [Prerequisite](#prerequisite)
 - [Installation](#installation)
-- [Prerequisite](#rerequisite)
 - [Usage](#usage)
 - [Support](#support)
 
