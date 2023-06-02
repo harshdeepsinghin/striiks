@@ -4,6 +4,7 @@
 ## Table of Contents
 - [Introduction](#introduction)
 - [Installation](#installation)
+- [Prerequisite](#rerequisite)
 - [Usage](#usage)
 - [Support](#support)
 
