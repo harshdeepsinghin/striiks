@@ -18,8 +18,8 @@ with open('config.py', 'r+') as F: # saving the database name to config file for
         F.write('\n' + f"DATABASE = \"{DATABASE}\"")
 
 k.execute(f"USE {DATABASE}")
-k.execute("CREATE TABLE IF NOT EXISTS STREAKS(ID INTEGER PRIMARY KEY, WHAT VARCHAR(50),  WHY VARCHAR(100), STARTED_ON DATE)") # STREAKS table creation
-k.execute("CREATE TABLE IF NOT EXISTS BROKEN(ID INTEGER PRIMARY KEY, WHAT VARCHAR(50),  WHY VARCHAR(100), STARTED_ON DATE, BROKEN_ON DATE)") # BROKEN table creation
+k.execute("CREATE TABLE IF NOT EXISTS STREAKS(ID INTEGER PRIMARY KEY UNIQUE, WHAT VARCHAR(50) UNIQUE,  WHY VARCHAR(100), STARTED_ON DATE)") # STREAKS table creation
+k.execute("CREATE TABLE IF NOT EXISTS BROKEN(ID INTEGER PRIMARY KEY UNIQUE, WHAT VARCHAR(50) UNIQUE,  WHY VARCHAR(100), STARTED_ON DATE, BROKEN_ON DATE)") # BROKEN table creation
 c.commit()
 
 print("Setup done successfully!!!" + '\n' + 'Run the program(main.py)')
