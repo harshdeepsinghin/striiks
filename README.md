@@ -12,7 +12,7 @@
 **Striiks** is a simple streak days-counter program made in python to make or break habits.
 
 ## Prerequisite
-Your system must have installed any DBMS (such as MySQL, MongoDB or any other)
+Your system must have installed any DBMS (such as MySQL, MariaDB or any other)
 
 ## Installation
 Clone the repo:
