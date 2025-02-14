@@ -6,15 +6,25 @@ from pymongo import MongoClient  # for MongoDB connection
 from dotenv import load_dotenv  # to load environment variables from .env file
 import os  # to access environment variables
 import random
+from urllib.parse import quote_plus
 
 ########## ----- LOAD ENVIRONMENT VARIABLES ----- ##########
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Get MongoDB connection details from environment variables
-MONGODB_URI = os.getenv("MONGODB_URI")
+# Get MongoDB credentials from environment variables
+USERNAME = os.getenv("MONGODB_USERNAME")
+PASSWORD = os.getenv("MONGODB_PASSWORD")
+CLUSTER = os.getenv("MONGODB_CLUSTER")
 DATABASE_NAME = os.getenv("DATABASE_NAME")
+
+# Encode USERNAME and PASSWORD
+ENCODED_USERNAME = quote_plus(USERNAME)
+ENCODED_PASSWORD = quote_plus(PASSWORD)
+print(USERNAME, PASSWORD, CLUSTER, DATABASE_NAME, sep="\n")
+# Construct the MongoDB URI
+MONGODB_URI = f"mongodb+srv://{ENCODED_USERNAME}:{ENCODED_PASSWORD}@cluster0.9vczn.mongodb.net/?retryWrites=true&w=majority&appName={CLUSTER}"
 
 ########## ----- MONGODB CONNECTION ----- ##########
 
