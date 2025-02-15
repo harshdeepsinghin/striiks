@@ -5,8 +5,8 @@ from tabulate import tabulate  # for beautiful help menu
 from pymongo import MongoClient  # for MongoDB connection
 from dotenv import load_dotenv  # to load environment variables from .env file
 import os  # to access environment variables
-import random
 from urllib.parse import quote_plus
+from bson.objectid import ObjectId  # to work with MongoDB's ObjectId
 
 ########## ----- LOAD ENVIRONMENT VARIABLES ----- ##########
 
@@ -22,7 +22,7 @@ DATABASE_NAME = os.getenv("DATABASE_NAME")
 # Encode USERNAME and PASSWORD
 ENCODED_USERNAME = quote_plus(USERNAME)
 ENCODED_PASSWORD = quote_plus(PASSWORD)
-print(USERNAME, PASSWORD, CLUSTER, DATABASE_NAME, sep="\n")
+
 # Construct the MongoDB URI
 MONGODB_URI = f"mongodb+srv://{ENCODED_USERNAME}:{ENCODED_PASSWORD}@cluster0.9vczn.mongodb.net/?retryWrites=true&w=majority&appName={CLUSTER}"
 
@@ -31,20 +31,14 @@ MONGODB_URI = f"mongodb+srv://{ENCODED_USERNAME}:{ENCODED_PASSWORD}@cluster0.9vc
 # Connect to MongoDB using the URI from the .env file
 client = MongoClient(MONGODB_URI)
 db = client[DATABASE_NAME]  # Use the database name from the .env file
-streaks_collection = db.streaks  # Collection for active streaks
-broken_collection = db.broken  # Collection for broken streaks
+streaks_collection = db.streaks  # Single collection for all streaks
 
 ########## ----- MISC SETUP ----- ##########
 
-ID = random.randint(1000, 9999)
 NOW = datetime.datetime.now()  # today's date with time
 TODAY = NOW.date()  # today's date only
 
 ########## ----- DEFINITION OF FUNCTIONS ----- ##########
-
-def IDC():
-    if streaks_collection.find_one({"ID": ID}) or broken_collection.find_one({"ID": ID}):
-        return True
 
 def help():
     print(tabulate(
@@ -65,42 +59,39 @@ def menu():
          ['To add an existing streak', '/a or add'],
          ['To view the streaks', '/v or view'],
          ['To advance view the running or broken streaks', '/l or list'],
-         ['  To advance view running streaks directly', '/l/s'],
-         ['  To advance view broken streaks directly', '/l/bn'],
+         ['  To advance view running streaks directly', '/l/s or running'],
+         ['  To advance view broken streaks directly', '/l/bn or broken'],
+         ['  To advance view all the streaks', '/l/a or all'],
          ['To restart a streak', '/r or restart'],
          ['To break a streak', '/b or break'],
          ['To delete a streak from the database permanently', '/d or delete'],
-         ['  To delete a running streak directly', '/d/s'],
-         ['  To delete a broken streak directly', '/d/bn'],
          ['To quit this app', '/q or quit']],
         tablefmt='fancy_grid'))
 
 def start(WHAT, WHY):  # to start a streak
-    global ID
-    if IDC():  # so that no duplicate IDs exist
-        ID = random.randint(1000, 9999)
     streak = {
-        "ID": ID,
         "WHAT": WHAT,
         "WHY": WHY,
-        "STARTED_ON": str(TODAY)
+        "STARTED_ON": str(TODAY),
+        "STATUS": 1,  # 1 for running streak
+        "BROKEN_ON": None  # No broken date initially
     }
-    streaks_collection.insert_one(streak)
+    result = streaks_collection.insert_one(streak)
+    print(f"Streak for {WHAT} started with ID {result.inserted_id}. All the best!")
 
 def add(WHAT, WHY, WHEN):  # to add a streak by giving already started streak's date
-    global ID
-    if IDC():  # so that no duplicate IDs exist
-        ID = random.randint(1000, 9999)
     streak = {
-        "ID": ID,
         "WHAT": WHAT,
         "WHY": WHY,
-        "STARTED_ON": WHEN
+        "STARTED_ON": WHEN,
+        "STATUS": 1,  # 1 for running streak
+        "BROKEN_ON": None  # No broken date initially
     }
-    streaks_collection.insert_one(streak)
+    result = streaks_collection.insert_one(streak)
+    print(f"Streak for {WHAT} added with ID {result.inserted_id}. All the best!")
 
 def view():  # to list necessary attributes only
-    streaks = list(streaks_collection.find({}, {"_id": 0, "WHAT": 1, "STARTED_ON": 1}))
+    streaks = list(streaks_collection.find({"STATUS": 1}, {"_id": 1, "WHAT": 1, "STARTED_ON": 1}))
     if streaks:
         for streak in streaks:
             streak["STREAK_IN_DAYS"] = (datetime.datetime.now() - datetime.datetime.strptime(streak["STARTED_ON"], "%Y-%m-%d")).days
@@ -108,55 +99,100 @@ def view():  # to list necessary attributes only
     else:
         print("List is empty!!!")
 
-def listall(CATEG):  # to list all the attributes of the tables
-    if CATEG == "STREAKS":
-        streaks = list(streaks_collection.find({}, {"_id": 0}))
+def listall(CATEG):  # to list all the attributes of the streaks
+    if CATEG == "running":
+        streaks = list(streaks_collection.find({"STATUS": 1}, {"_id": 1, "WHAT": 1, "STARTED_ON": 1}))
         if streaks:
             for streak in streaks:
                 streak["STREAK_IN_DAYS"] = (datetime.datetime.now() - datetime.datetime.strptime(streak["STARTED_ON"], "%Y-%m-%d")).days
             print(tabulate(streaks, headers="keys", tablefmt='fancy_grid'))
         else:
-            print("List is empty!!!")
-    elif CATEG == "BROKEN":
-        broken = list(broken_collection.find({}, {"_id": 0}))
-        if broken:
-            for streak in broken:
+            print("No running streaks found!")
+
+    elif CATEG == "broken":
+        streaks = list(streaks_collection.find({"STATUS": 0}, {"_id": 1, "WHAT": 1, "STARTED_ON": 1, "BROKEN_ON": 1}))
+        if streaks:
+            for streak in streaks:
                 streak["STREAK_IN_DAYS"] = (datetime.datetime.strptime(streak["BROKEN_ON"], "%Y-%m-%d") - datetime.datetime.strptime(streak["STARTED_ON"], "%Y-%m-%d")).days
-            print(tabulate(broken, headers="keys", tablefmt='fancy_grid'))
+            print(tabulate(streaks, headers="keys", tablefmt='fancy_grid'))
         else:
-            print("List is empty!!!")
+            print("No broken streaks found!")
 
-def restart(FROM, WHICH):  # to restart the streak
-    if FROM == "STREAKS":
-        streaks_collection.update_one({"ID": WHICH}, {"$set": {"STARTED_ON": str(TODAY)}})
-    elif FROM == "BROKEN":
-        broken_streak = broken_collection.find_one({"ID": WHICH})
-        if broken_streak:
-            streaks_collection.insert_one({
-                "ID": broken_streak["ID"],
-                "WHAT": broken_streak["WHAT"],
-                "WHY": broken_streak["WHY"],
-                "STARTED_ON": str(TODAY)
-            })
-            broken_collection.delete_one({"ID": WHICH})
+    elif CATEG == "all":
+        streaks = list(streaks_collection.find({}, {"_id": 1, "WHAT": 1, "STARTED_ON": 1, "STATUS": 1, "BROKEN_ON": 1}))
+        if streaks:
+            for streak in streaks:
+                if streak["STATUS"] == 1:
+                    streak["STREAK_IN_DAYS"] = (datetime.datetime.now() - datetime.datetime.strptime(streak["STARTED_ON"], "%Y-%m-%d")).days
+                else:
+                    streak["STREAK_IN_DAYS"] = (datetime.datetime.strptime(streak["BROKEN_ON"], "%Y-%m-%d") - datetime.datetime.strptime(streak["STARTED_ON"], "%Y-%m-%d")).days
+            print(tabulate(streaks, headers="keys", tablefmt='fancy_grid'))
+        else:
+            print("No streaks found!")
 
-def breaks(WHICH):  # to break the streak by transferring it to BROKEN list from STREAKS list
-    streak = streaks_collection.find_one({"ID": WHICH})
-    if streak:
-        broken_collection.insert_one({
-            "ID": streak["ID"],
-            "WHAT": streak["WHAT"],
-            "WHY": streak["WHY"],
-            "STARTED_ON": streak["STARTED_ON"],
-            "BROKEN_ON": str(TODAY)
-        })
-        streaks_collection.delete_one({"ID": WHICH})
+def restart(STREAK_ID):  # to restart the streak
+    try:
+        STREAK_ID = ObjectId(STREAK_ID)  # Convert string to ObjectId
+    except:
+        print("Invalid ID! Please enter a valid ObjectId.")
+        return
 
-def delete(FROM, WHICH):  # to delete the streak
-    if FROM == "STREAKS":
-        streaks_collection.delete_one({"ID": WHICH})
-    elif FROM == "BROKEN":
-        broken_collection.delete_one({"ID": WHICH})
+    streak = streaks_collection.find_one({"_id": STREAK_ID})
+    if not streak:
+        print(f"Streak with ID {STREAK_ID} not found!")
+        return
+
+    if streak["STATUS"] == 1:
+        print(f"Streak for {streak['WHAT']} is already running!")
+        return
+
+    streaks_collection.update_one(
+        {"_id": STREAK_ID},
+        {"$set": {"STARTED_ON": str(TODAY), "STATUS": 1, "BROKEN_ON": None}}
+    )
+    print(f"Streak for {streak['WHAT']} restarted. All the best!")
+
+def breaks(STREAK_ID):  # to break the streak
+    try:
+        STREAK_ID = ObjectId(STREAK_ID)  # Convert string to ObjectId
+    except:
+        print("Invalid ID! Please enter a valid ObjectId.")
+        return
+
+    streak = streaks_collection.find_one({"_id": STREAK_ID})
+    if not streak:
+        print(f"Streak with ID {STREAK_ID} not found!")
+        return
+
+    if streak["STATUS"] == 0:
+        print(f"Streak for {streak['WHAT']} is already broken!")
+        return
+
+    streaks_collection.update_one(
+        {"_id": STREAK_ID},
+        {"$set": {"STATUS": 0, "BROKEN_ON": str(TODAY)}}
+    )
+    print(f"Streak for {streak['WHAT']} broke. Ahh! Better luck next time!")
+
+def delete(STREAK_ID):  # to delete the streak
+    try:
+        STREAK_ID = ObjectId(STREAK_ID)  # Convert string to ObjectId
+    except:
+        print("Invalid ID! Please enter a valid ObjectId.")
+        return
+
+    streak = streaks_collection.find_one({"_id": STREAK_ID})
+    if not streak:
+        print(f"Streak with ID {STREAK_ID} not found!")
+        return
+
+    confirm = input(f"Are you sure you want to delete the streak for {streak['WHAT']}? (y/N): ").lower()
+    if confirm != "y":
+        print("Deletion canceled.")
+        return
+
+    streaks_collection.delete_one({"_id": STREAK_ID})
+    print(f"Streak for {streak['WHAT']} deleted permanently!")
 
 ########## ----- MAIN FUNCTION ----- ##########
 
@@ -176,122 +212,45 @@ def main():
                 WHAT = str(input("What habit to create or to break (eg. Avoid Coffee): "))
                 WHY = str(input("Why you want to do so (eg. Because of addiction): "))
                 start(WHAT, WHY)
-                print(f"Streak for {WHAT} started. All the best!")
 
             elif Q == "/a" or Q == "add":
                 WHAT = str(input("What habit to create or to break (eg. Avoid Coffee): "))
                 WHY = str(input("Why you want to do so (eg. Because of addiction): "))
-                WHEN = str(input("When did you started (in YYYY-MM-DD): "))
+                WHEN = str(input("When did you start (in YYYY-MM-DD): "))
                 add(WHAT, WHY, WHEN)
-                print(f"Streak for {WHAT} added. All the best!")
 
             elif Q == "/v" or Q == "view":
                 view()
 
             elif Q == "/l" or Q == "list":
                 print(tabulate([
-                    ['To list running streaks', '/s or streaks'],
-                    ['To list broken streaks', '/bn or broken']],
+                    ['To list running streaks', '/l/s or running'],
+                    ['To list broken streaks', '/l/bn or broken'],
+                    ['To list all streaks', '/l/a or all']],
                     tablefmt="rounded_grid"))
                 T = str(input("Enter Query [list]: "))
-                if T == '/s' or T == 'streaks':
+                if T == '/l/s' or T == 'running':
                     print('\n' + "List for Running Streaks ")
-                    listall("STREAKS")
-                elif T == '/bn' or T == 'broken':
-                    listall("BROKEN")
-
-            elif Q == '/l/s' or Q == 'running':
-                print('\n' + "List for Running Streaks ")
-                listall("STREAKS")
-
-            elif Q == '/l/bn' or Q == 'broken':
-                listall("BROKEN")
+                    listall("running")
+                elif T == '/l/bn' or T == 'broken':
+                    listall("broken")
+                elif T == '/l/a' or T == 'all':
+                    listall("all")
 
             elif Q == "/r" or Q == "restart":
-                print(tabulate([
-                    ['To restart a running streak', '/s or streaks'],
-                    ['To restart a broken streak', '/bn or broken']],
-                    tablefmt="rounded_grid"))
-
-                T = str(input("Enter Query [restart]: "))
-
-                if T == '/s' or T == 'streaks':
-                    streaks = list(streaks_collection.find({}, {"_id": 0}))
-                    if streaks:
-                        for streak in streaks:
-                            streak["STREAK_IN_DAYS"] = (datetime.datetime.now() - datetime.datetime.strptime(streak["STARTED_ON"], "%Y-%m-%d")).days
-                        print(tabulate(streaks, headers="keys", tablefmt='fancy_grid'))
-                        WHICH = int(input("Enter ID of the streak you want to restart: "))
-                        JKL = input("Are you sure to restart the streak? y/N: ") or "N"
-                        if JKL == "Y" or JKL == "y":
-                            restart("STREAKS", WHICH)
-                            print(f"Streak for {streaks_collection.find_one({'ID': WHICH})['WHAT']} restarted. All the best!")
-                    else:
-                        print("No running streaks found!")
-
-                elif T == '/bn' or T == 'broken':
-                    broken = list(broken_collection.find({}, {"_id": 0}))
-                    if broken:
-                        for streak in broken:
-                            streak["STREAK_IN_DAYS"] = (datetime.datetime.strptime(streak["BROKEN_ON"], "%Y-%m-%d") - datetime.datetime.strptime(streak["STARTED_ON"], "%Y-%m-%d")).days
-                        print(tabulate(broken, headers="keys", tablefmt='fancy_grid'))
-                        WHICH = int(input("Enter ID of the streak you want to restart: "))
-                        JKL = input("Are you sure to restart the streak? y/N: ") or "N"
-                        if JKL == "Y" or JKL == "y":
-                            restart("BROKEN", WHICH)
-                            print(f"Streak for {broken_collection.find_one({'ID': WHICH})['WHAT']} restarted. All the best!")
-                    else:
-                        print("No broken streaks found!")
+                listall("all")
+                STREAK_ID = input("Enter the ObjectId of the streak you want to restart: ")
+                restart(STREAK_ID)
 
             elif Q == "/b" or Q == "break":
-                streaks = list(streaks_collection.find({}, {"_id": 0}))
-                if streaks:
-                    for streak in streaks:
-                        streak["STREAK_IN_DAYS"] = (datetime.datetime.now() - datetime.datetime.strptime(streak["STARTED_ON"], "%Y-%m-%d")).days
-                    print(tabulate(streaks, headers="keys", tablefmt='fancy_grid'))
-                    WHICH = int(input("Enter ID of the streak you want to break: "))
-                    JKL = input("Are you sure to break the streak? y/N: ") or "N"
-                    if JKL == "Y" or JKL == "y":
-                        breaks(WHICH)
-                        print(f"Streak for {streaks_collection.find_one({'ID': WHICH})['WHAT']} broke. Ahh! Better luck next time!")
-                else:
-                    print("No running streaks found!")
+                listall("running")
+                STREAK_ID = input("Enter the ObjectId of the streak you want to break: ")
+                breaks(STREAK_ID)
 
             elif Q == "/d" or Q == "delete":
-                print(tabulate([
-                    ['To delete from running streaks', '/s or streaks'],
-                    ['To delete from broken streaks', '/bn or broken']],
-                    tablefmt="rounded_grid"))
-
-                T = str(input("Enter Query [delete]: "))
-
-                if T == '/s' or T == 'streaks':
-                    streaks = list(streaks_collection.find({}, {"_id": 0}))
-                    if streaks:
-                        for streak in streaks:
-                            streak["STREAK_IN_DAYS"] = (datetime.datetime.now() - datetime.datetime.strptime(streak["STARTED_ON"], "%Y-%m-%d")).days
-                        print(tabulate(streaks, headers="keys", tablefmt='fancy_grid'))
-                        WHICH = int(input("Enter ID of the streak you want to delete: "))
-                        JKL = input("Are you sure to delete the streak? y/N: ") or "N"
-                        if JKL == "Y" or JKL == "y":
-                            delete("STREAKS", WHICH)
-                            print(f"Streak for {streaks_collection.find_one({'ID': WHICH})['WHAT']} deleted permanently!")
-                    else:
-                        print("No running streaks found!")
-
-                elif T == '/bn' or T == 'broken':
-                    broken = list(broken_collection.find({}, {"_id": 0}))
-                    if broken:
-                        for streak in broken:
-                            streak["STREAK_IN_DAYS"] = (datetime.datetime.strptime(streak["BROKEN_ON"], "%Y-%m-%d") - datetime.datetime.strptime(streak["STARTED_ON"], "%Y-%m-%d")).days
-                        print(tabulate(broken, headers="keys", tablefmt='fancy_grid'))
-                        WHICH = int(input("Enter ID of the streak you want to delete: "))
-                        JKL = input("Are you sure to delete the streak? y/N: ") or "N"
-                        if JKL == "Y" or JKL == "y":
-                            delete("BROKEN", WHICH)
-                            print(f"Streak for {broken_collection.find_one({'ID': WHICH})['WHAT']} deleted permanently!")
-                    else:
-                        print("No broken streaks found!")
+                listall("all")
+                STREAK_ID = input("Enter the ObjectId of the streak you want to delete: ")
+                delete(STREAK_ID)
 
             elif Q == "/q" or Q == "quit":
                 print("Bye, see you again...")
@@ -310,4 +269,3 @@ def main():
 main()  # to run the whole program
 
 ########## ----- THE END ----- ##########
-########## ----- THANK YOU ----- ##########
