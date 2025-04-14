@@ -91,7 +91,7 @@ def add(WHAT, WHY, WHEN):  # to add a streak by giving already started streak's 
     print(f"Streak for {WHAT} added with ID {result.inserted_id}. All the best!")
 
 def view():  # to list necessary attributes only
-    streaks = list(streaks_collection.find({"STATUS": 1}, {"_id": 1, "WHAT": 1, "STARTED_ON": 1}))
+    streaks = list(streaks_collection.find({"STATUS": 1}, {"_id": 0, "WHAT": 1, "STARTED_ON": 1}))
     if streaks:
         for streak in streaks:
             streak["STREAK_IN_DAYS"] = (datetime.datetime.now() - datetime.datetime.strptime(streak["STARTED_ON"], "%Y-%m-%d")).days
@@ -101,7 +101,7 @@ def view():  # to list necessary attributes only
 
 def listall(CATEG):  # to list all the attributes of the streaks
     if CATEG == "running":
-        streaks = list(streaks_collection.find({"STATUS": 1}, {"_id": 1, "WHAT": 1, "STARTED_ON": 1}))
+        streaks = list(streaks_collection.find({"STATUS": 1}, {}))
         if streaks:
             for streak in streaks:
                 streak["STREAK_IN_DAYS"] = (datetime.datetime.now() - datetime.datetime.strptime(streak["STARTED_ON"], "%Y-%m-%d")).days
@@ -110,7 +110,7 @@ def listall(CATEG):  # to list all the attributes of the streaks
             print("No running streaks found!")
 
     elif CATEG == "broken":
-        streaks = list(streaks_collection.find({"STATUS": 0}, {"_id": 1, "WHAT": 1, "STARTED_ON": 1, "BROKEN_ON": 1}))
+        streaks = list(streaks_collection.find({"STATUS": 0}, {}))
         if streaks:
             for streak in streaks:
                 streak["STREAK_IN_DAYS"] = (datetime.datetime.strptime(streak["BROKEN_ON"], "%Y-%m-%d") - datetime.datetime.strptime(streak["STARTED_ON"], "%Y-%m-%d")).days
@@ -119,7 +119,7 @@ def listall(CATEG):  # to list all the attributes of the streaks
             print("No broken streaks found!")
 
     elif CATEG == "all":
-        streaks = list(streaks_collection.find({}, {"_id": 1, "WHAT": 1, "STARTED_ON": 1, "STATUS": 1, "BROKEN_ON": 1}))
+        streaks = list(streaks_collection.find({}, {}))
         if streaks:
             for streak in streaks:
                 if streak["STATUS"] == 1:
@@ -140,10 +140,6 @@ def restart(STREAK_ID):  # to restart the streak
     streak = streaks_collection.find_one({"_id": STREAK_ID})
     if not streak:
         print(f"Streak with ID {STREAK_ID} not found!")
-        return
-
-    if streak["STATUS"] == 1:
-        print(f"Streak for {streak['WHAT']} is already running!")
         return
 
     streaks_collection.update_one(
